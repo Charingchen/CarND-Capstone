@@ -14,8 +14,8 @@ class Controller(object):
         self.yaw_controller = YawController(wheel_base,steer_ratio,0.1,max_lat_accel,max_steer_angle)
 
         kp = 0.3
-        ki = 0.01
-        kd = 1.2
+        ki = 0.1
+        kd = 0
         mn = 0. # Minimum throttle value
         mx = 0.2 # maximum throttle value
         self.throttle_controller = PID(kp,ki,kd,mn,mx)
@@ -40,10 +40,14 @@ class Controller(object):
         # Disable and reset pid if the enable is false
         if not dbw_enable:
             self.throttle_controller.reset()
-            return 0, 0, 0
+            return 0., 0., 0.
         
         # Filter the high frequncy portion off
         current_val = self.vel_lpf.filt(current_val)
+
+        # rospy.logwarn('Angular vel: {0}'.format(angular_vel))
+        # rospy.logwarn('Target vel: {0}'.format(linear_vel))
+        # rospy.logwarn('Current vel: {0}'.format(current_val))
 
         steering = self.yaw_controller.get_steering(linear_vel,angular_vel,current_val)
 
@@ -72,4 +76,4 @@ class Controller(object):
 
         
         # Return throttle, brake, steer
-        return throttle, brake, steering.
+        return throttle, brake, steering
