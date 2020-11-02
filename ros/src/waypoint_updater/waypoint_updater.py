@@ -36,6 +36,7 @@ class WaypointUpdater(object):
         self.stopline_wp_idx = -1     
         self.waypoints_2d = None
         self.waypoint_tree = None
+        self.prev_state = self.now_state = -1
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -50,7 +51,7 @@ class WaypointUpdater(object):
 
         
     def loop(self):
-        rate = rospy.Rate(50)
+        rate = rospy.Rate(20)
         while not rospy.is_shutdown():
             if self.pose and self.base_waypoints:
                 # Get closeset waypoint
@@ -92,10 +93,17 @@ class WaypointUpdater(object):
 
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = temp_base_waypoints
-            # rospy.logwarn('Not Red, Using previous waypoints')
+            self.now_state = 0
+            if self.now_state != self.prev_state:
+                rospy.logwarn('Waypoint_updater: Not Red, Using previous waypoints')
+                self.prev_state = self.now_state
         else:
             lane.waypoints = self.decelerate_waypoints(temp_base_waypoints,closest_idx)
-            rospy.logwarn('Decelerating')
+            self.now_state = 1
+            if self.now_state != self.prev_state:
+                rospy.logwarn('Waypoint_updater: Decelerating Waypoints created')
+                self.prev_state = self.now_state
+    
 
 
         return lane
@@ -107,7 +115,7 @@ class WaypointUpdater(object):
             p = Waypoint()
             p.pose = wp.pose
             
-            stop_idx = max(self.stopline_wp_idx - closest_idx - 3 , 0)
+            stop_idx = max(self.stopline_wp_idx - closest_idx - 4 , 0)
             dist = self.distance(waypoints,i,stop_idx)
             vel = math.sqrt(2 * MAX_DECEL * dist)
 
@@ -131,7 +139,7 @@ class WaypointUpdater(object):
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
         if self.stopline_wp_idx != msg.data:
-            rospy.logwarn('Receiving New stopline_indx: {0}, Old data: {}'.format(msg.data,self.stopline_wp_idx))
+            rospy.logwarn('Receiving New stopline_indx: {}, older Data: {}'.format(msg.data,self.stopline_wp_idx))
             self.stopline_wp_idx = msg.data
 
     def obstacle_cb(self, msg):

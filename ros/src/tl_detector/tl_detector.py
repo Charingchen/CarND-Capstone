@@ -53,6 +53,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.prev_light_state = None
 
         rospy.spin()
 
@@ -167,8 +168,18 @@ class TLDetector(object):
         if closest_light:
             state = self.get_light_state(light)
             self.print_counter += 1
-            if self.print_counter % PRINT_FACTOR == 0:
-                rospy.logwarn('Traffic line state {0}, Line Index: {}'.format(state,line_wp_idx))
+            light_state = 'None'
+
+            if state != self.prev_light_state:
+                self.prev_light_state = state
+                if state == 0:
+                    light_state = 'RED'
+                elif state == 1:
+                    light_state = 'Yellow'
+                elif state == 2:
+                    light_state = 'Green'
+
+                rospy.logwarn('Traffic line state {}, Line Index: {}'.format(light_state,line_wp_idx))
             return line_wp_idx, state
 
         return -1, TrafficLight.UNKNOWN
