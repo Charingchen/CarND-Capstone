@@ -13,6 +13,7 @@ import yaml
 from scipy.spatial import KDTree
 
 STATE_COUNT_THRESHOLD = 3
+PRINT_FACTOR = 5
 
 class TLDetector(object):
     def __init__(self):
@@ -24,6 +25,7 @@ class TLDetector(object):
         self.waypoints_2d = None
         self.camera_image = None
         self.lights = []
+        self.print_counter = 0
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -142,7 +144,7 @@ class TLDetector(object):
 
         """
         closest_light = None
-        line_wp_idx = None
+        line_wp_idx = -1
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
@@ -164,10 +166,11 @@ class TLDetector(object):
 
         if closest_light:
             state = self.get_light_state(light)
-            rospy.logwarn('Traffic line state {0}'.format(state))
-            rospy.logwarn('Line index {0}'.format(line_wp_idx))
+            self.print_counter += 1
+            if self.print_counter % PRINT_FACTOR == 0:
+                rospy.logwarn('Traffic line state {0}, Line Index: {}'.format(state,line_wp_idx))
             return line_wp_idx, state
-        self.waypoints = None
+
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
