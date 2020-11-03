@@ -4,6 +4,7 @@ from pid import PID
 from lowpass import LowPassFilter
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
+PRINT_FREQ = 2 # print log every how many sec
 
 
 class Controller(object):
@@ -15,7 +16,7 @@ class Controller(object):
 
         kp = 0.5
         ki = 0.001
-        kd = 9.6
+        kd = .8 # Derivate is not required.
         mn = 0. # Minimum throttle value
         mx = 0.2 # maximum throttle value
         self.throttle_controller = PID(kp,ki,kd,mn,mx)
@@ -31,8 +32,8 @@ class Controller(object):
         self.accel_limit = accel_limit
         self.wheel_radius = wheel_radius
 
-        self.last_time = rospy.get_time()
-        
+        self.last_time = self.print_time = rospy.get_time()
+         
 
     def control(self, current_val,dbw_enable,linear_vel, angular_vel):
         # TODO
@@ -62,16 +63,22 @@ class Controller(object):
         throttle = self.throttle_controller.step(vel_err, sample_time)
         brake = 0
 
-        # Apple brake when there is nothing
+        # Apple brake its almost at stop
         if linear_vel == 0 and current_val < 0.1:
-            throttle = 0 
+            throttle = 0. 
             brake = 400 #N*m to hold the car in place if we are stopped
 
-        # If throttle come out be small, apply calculated brake torque
-        elif throttle < 0.1 and vel_err < 0:
-            throttle = 0
+        # If throttle come out be small, apply calculated brake torque or when vel_err is too big, slow down
+        elif (throttle < 0.1 and vel_err < 0) or vel_err < -2.0 :
+            throttle = 0.
             decel = max(vel_err,self.decel_limit)
             brake = abs(decel) * self.vehicle_mass * self.wheel_radius # Torque per meter
+
+        # Debug Print out
+        # if (current_time - self.print_time) > PRINT_FREQ:
+        #     self.print_time = current_time
+        #     rospy.logwarn("POSE: current_vel={:.2f}, linear_vel={:.2f}, vel_error={:.2f}".format(current_val,linear_vel,vel_err))
+        #     rospy.logwarn("POSE: throttle={:.2f}, brake={:.2f}, steering={:.2f}".format(throttle, brake, steering))
 
 
         
